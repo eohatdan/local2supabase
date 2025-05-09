@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Import Medications to Supabase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h2>Import Medications to Supabase</h2>
+  <p>This tool will upload medications from localStorage for <strong>daninreno@gmail.com</strong>.</p>
+  <button onclick="uploadMedications()">Upload Now</button>
+  <p id="status"></p>
+
+  <script>
+    const client = supabase.createClient('https://ixxzxenspwzrkiazepbj.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4eHp4ZW5zcHd6cmtpYXplcGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1MzE1NjMsImV4cCI6MjA1OTEwNzU2M30.28E41uParU4YMisV-Kxlq1KybbOdRrbKqXYKrH84COw');
+
+    async function uploadMedications() {
+      const status = document.getElementById("status");
+      const email = "daninreno@gmail.com";
+
+      const localData = localStorage.getItem("medications") || localStorage.getItem("medicationsList");
+
+      if (!localData) {
+        status.textContent = "❌ No medications found in local storage.";
+        return;
+      }
+
+      const medications = JSON.parse(localData);
+
+      if (!Array.isArray(medications) || medications.length === 0) {
+        status.textContent = "❌ Medication data is empty or malformed.";
+        return;
+      }
+
+      const { data: patient, error: lookupError } = await client
+        .from("patients")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (lookupError || !patient?.id) {
+        status.textContent = "❌ Could not find patient with email " + email;
+        console.error("Patient lookup failed:", lookupError);
+        return;
+      }
+
+      const patientUUID = patient.id;
+
+      const uploadPayload = medications.map(med => ({
+        patient_id: patientUUID,
+        medication: med.medication,
+        dosage: med.dosage,
+        times: med.times
+      }));
+
+      const { error: insertError } = await client
+        .from("medicationsList")
+        .insert(uploadPayload);
+
+      if (insertError) {
+        status.textContent = "❌ Failed to insert medications.";
+        console.error("Insert error:", insertError.message);
+        return;
+      }
+
+      status.textContent = "✅ Medications successfully uploaded!";
+    }
+  </script>
+</body>
+</html>
