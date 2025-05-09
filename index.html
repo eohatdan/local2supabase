@@ -55,7 +55,8 @@
       const { error: insertError } = await client
         .from("medicationsList")
         .insert(uploadPayload);
-
+      console.log("uploadPayload: ",uploadPayload);
+      
       if (insertError) {
         status.textContent = "❌ Failed to insert medications.";
         console.error("Insert error:", insertError.message);
