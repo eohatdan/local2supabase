@@ -53,7 +53,7 @@
       }));
 
       const { error: insertError } = await client
-        .from("medicationsList")
+        .from("medicationslist")
         .insert(uploadPayload);
       console.log("uploadPayload: ",uploadPayload);
       
