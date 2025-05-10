@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Import Health Records to Supabase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h2>Import Health Records for daninreno@gmail.com</h2>
+  <button onclick="uploadHealthRecords()">Upload</button>
+  <p id="status"></p>
+
+  <script>
+    const client = supabase.createClient(
+      "https://ixxzxenspwzrkiazepbj.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4eHp4ZW5zcHd6cmtpYXplcGJqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzUzMTU2MywiZXhwIjoyMDU5MTA3NTYzfQ.uivEutNP7LC0zSnuAT6_Xh9M1zmsmh5lMgIeoO8T26w";  // NEVER use this in production/public sites!
+    );
+
+    async function uploadHealthRecords() {
+      const status = document.getElementById("status");
+      const email = "daninreno@gmail.com";
+
+      const { data: patient, error: lookupError } = await client
+        .from("patients")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (lookupError || !patient?.id) {
+        status.textContent = "❌ Could not find patient.";
+        return;
+      }
+
+      const patientUUID = patient.id;
+
+      const localData = localStorage.getItem("healthRecords");
+      if (!localData) {
+        status.textContent = "❌ No local health records found.";
+        return;
+      }
+
+      const records = JSON.parse(localData);
+      const payload = [{
+        patient_id: patientUUID,
+        condition: records.conditions || "",
+        allergies: records.allergies || "",
+        notes: records.notes || ""
+      }];
+
+      const { error: insertError } = await client.from("healthRecords").insert(payload);
+
+      if (insertError) {
+        console.error(insertError);
+        status.textContent = "❌ Insert failed.";
+      } else {
+        status.textContent = "✅ Health records successfully uploaded.";
+      }
+    }
+  </script>
+</body>
+</html>
