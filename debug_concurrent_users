@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SMA Session Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h2>SMA Session Debug Dashboard</h2>
+  <div id="sessionInfo"></div>
+
+  <button onclick="loadData()">Load My Records</button>
+
+  <h3>Medications:</h3>
+  <pre id="medications"></pre>
+
+  <h3>Health Records:</h3>
+  <pre id="healthRecords"></pre>
+
+  <script>
+    const client = supabase.createClient('https://ixxzxenspwzrkiazepbj.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4eHp4ZW5zcHd6cmtpYXplcGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1MzE1NjMsImV4cCI6MjA1OTEwNzU2M30.28E41uParU4YMisV-Kxlq1KybbOdRrbKqXYKrH84COw');
+
+    async function loadData() {
+      const { data: userInfo, error } = await client.auth.getUser();
+      const sessionInfo = document.getElementById("sessionInfo");
+
+      if (error || !userInfo?.user?.id) {
+        sessionInfo.innerText = "❌ Not logged in or session invalid.";
+        return;
+      }
+
+      const uid = userInfo.user.id;
+      const email = userInfo.user.email;
+      const patientUUID = localStorage.getItem("patientUUID");
+
+      sessionInfo.innerHTML = `
+        <strong>Logged in as:</strong> ${email}<br>
+        <strong>auth.uid():</strong> ${uid}<br>
+        <strong>patientUUID (from localStorage):</strong> ${patientUUID}
+      `;
+
+      const { data: meds, error: medsErr } = await client
+        .from("medicationslist")
+        .select("*")
+        .eq("patient_id", patientUUID);
+
+      const { data: records, error: hrErr } = await client
+        .from("healthRecords")
+        .select("*")
+        .eq("patient_id", patientUUID);
+
+      document.getElementById("medications").innerText =
+        medsErr ? "Error: " + medsErr.message : JSON.stringify(meds, null, 2);
+
+      document.getElementById("healthRecords").innerText =
+        hrErr ? "Error: " + hrErr.message : JSON.stringify(records, null, 2);
+    }
+  </script>
+</body>
+</html>
