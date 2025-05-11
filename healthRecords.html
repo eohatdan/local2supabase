@@ -1,58 +1,69 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Import Health Records to Supabase</title>
+  <title>Import Health Records (Secure)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <h2>Import Health Records for daninreno@gmail.com</h2>
-  <button onclick="uploadHealthRecords()">Upload</button>
+  <h2>Secure Health Records Import</h2>
+
+  <p>Enter login credentials for the patient whose records you're importing:</p>
+  <input type="email" id="email" placeholder="Email" value="daninreno@gmail.com"><br>
+  <input type="password" id="password" placeholder="Password"><br>
+  <button onclick="loginAndImport()">Login & Import</button>
+
   <p id="status"></p>
 
   <script>
     const client = supabase.createClient(
-      "https://ixxzxenspwzrkiazepbj.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4eHp4ZW5zcHd6cmtpYXplcGJqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzUzMTU2MywiZXhwIjoyMDU5MTA3NTYzfQ.uivEutNP7LC0zSnuAT6_Xh9M1zmsmh5lMgIeoO8T26w")  
-
-    async function uploadHealthRecords() {
+      'https://ixxzxenspwzrkiazepbj.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4eHp4ZW5zcHd6cmtpYXplcGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1MzE1NjMsImV4cCI6MjA1OTEwNzU2M30.28E41uParU4YMisV-Kxlq1KybbOdRrbKqXYKrH84COw');
+    
+    async function loginAndImport() {
       const status = document.getElementById("status");
-      const email = "daninreno@gmail.com";
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
 
-      const { data: patient, error: lookupError } = await client
-        .from("patients")
-        .select("id")
-        .eq("email", email)
-        .maybeSingle();
+      status.textContent = "🔐 Logging in...";
 
-      if (lookupError || !patient?.id) {
-        status.textContent = "❌ Could not find patient.";
+      const { error: loginError } = await client.auth.signInWithPassword({ email, password });
+
+      if (loginError) {
+        status.textContent = "❌ Login failed: " + loginError.message;
         return;
       }
 
-      const patientUUID = patient.id;
+      const { data: userData, error: userError } = await client.auth.getUser();
+
+      if (userError || !userData?.user?.id) {
+        status.textContent = "❌ Failed to get user ID.";
+        return;
+      }
+
+      const patientUUID = userData.user.id;
 
       const localData = localStorage.getItem("healthRecords");
       if (!localData) {
-        status.textContent = "❌ No local health records found.";
+        status.textContent = "❌ No health records in local storage.";
         return;
       }
 
-      const records = JSON.parse(localData);
+      const parsed = JSON.parse(localData);
       const payload = [{
         patient_id: patientUUID,
-        condition: records.conditions || "",
-        allergies: records.allergies || "",
-        notes: records.notes || ""
+        condition: parsed.conditions || "",
+        allergies: parsed.allergies || "",
+        notes: parsed.notes || ""
       }];
 
       const { error: insertError } = await client.from("healthRecords").insert(payload);
 
       if (insertError) {
-        console.error(insertError);
-        status.textContent = "❌ Insert failed.";
-      } else {
-        status.textContent = "✅ Health records successfully uploaded.";
+        status.textContent = "❌ Insert failed: " + insertError.message;
+        return;
       }
+
+      status.textContent = "✅ Health records successfully uploaded!";
     }
   </script>
 </body>
