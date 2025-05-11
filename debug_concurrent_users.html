@@ -30,26 +30,48 @@
 
       const uid = userInfo.user.id;
       const email = userInfo.user.email;
-      const patientUUID = localStorage.getItem("patientUUID");
+      let patientUUID = localStorage.getItem("patientUUID");
+
+      // 🔁 Attempt to auto-resolve patientUUID if missing
+      if (!patientUUID) {
+        const { data: patientData, error: fetchErr } = await client
+          .from("patients")
+          .select("id")
+          .eq("id", uid)
+          .maybeSingle();
+
+        if (patientData?.id) {
+          patientUUID = patientData.id;
+          localStorage.setItem("patientUUID", patientUUID);
+        }
+      }
 
       sessionInfo.innerHTML = `
         <strong>Logged in as:</strong> ${email}<br>
         <strong>auth.uid():</strong> ${uid}<br>
-        <strong>patientUUID (from localStorage):</strong> ${patientUUID}
+        <strong>patientUUID (in use):</strong> ${patientUUID || '❌ Not set or resolved'}
       `;
 
+      if (!patientUUID) {
+        document.getElementById("medications").textContent = "❌ No patient UUID — check-in required.";
+        document.getElementById("healthRecords").textContent = "❌ No patient UUID — check-in required.";
+        return;
+      }
+
+      // Fetch medications
       const { data: meds, error: medsErr } = await client
         .from("medicationslist")
         .select("*")
         .eq("patient_id", patientUUID);
 
+      document.getElementById("medications").innerText =
+        medsErr ? "Error: " + medsErr.message : JSON.stringify(meds, null, 2);
+
+      // Fetch health records
       const { data: records, error: hrErr } = await client
         .from("healthRecords")
         .select("*")
         .eq("patient_id", patientUUID);
-
-      document.getElementById("medications").innerText =
-        medsErr ? "Error: " + medsErr.message : JSON.stringify(meds, null, 2);
 
       document.getElementById("healthRecords").innerText =
         hrErr ? "Error: " + hrErr.message : JSON.stringify(records, null, 2);
