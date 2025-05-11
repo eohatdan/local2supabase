@@ -49,12 +49,13 @@
       }
 
       const parsed = JSON.parse(localData);
+   
       const payload = (parsed.conditions || "").split(",").map(c => ({
-        patient_id: patientUUID,
-        condition: c.trim(),
-        allergies: parsed.allergies || "",
-        notes: parsed.notes || ""
-      }));
+          patient_id: patientUUID,
+          condition: c.trim(),
+          allergies: parsed.allergies || "",
+          notes: parsed.notes || ""
+        }));
 
 
       const { error: insertError } = await client.from("healthRecords").insert(payload);
